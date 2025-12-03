@@ -9,8 +9,8 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 # ==================================================================
 # LOGIN MEGA SAAT CONTAINER START
 # ==================================================================
-MEGA_EMAIL = os.environ.get("kentukimeme@gmail.com")
-MEGA_PASSWORD = os.environ.get("Bintang123**")
+MEGA_EMAIL = "kentukimeme@gmail.com"
+MEGA_PASSWORD = "Bintang123**"
 
 def mega_login():
     if not MEGA_EMAIL or not MEGA_PASSWORD:
