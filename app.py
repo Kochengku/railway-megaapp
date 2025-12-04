@@ -117,7 +117,7 @@ def get_ptero_user_kocheng(email, panel_id):
         return None
 
     url = f"{panel['url']}/api/application/users?filter[email]={email}"
-    res = requests.get(url, headers=get_headers(panel_id)).json()
+    res = requests.get(url, headers=get_headers_kocheng(panel_id)).json()
     if "data" not in res or res["meta"]["pagination"]["total"] == 0:
         return None
     return res["data"][0]["attributes"]
@@ -128,7 +128,7 @@ def get_ptero_user_skyforgia(email, panel_id):
         return None
 
     url = f"{panel['url']}/api/application/users?filter[email]={email}"
-    res = requests.get(url, headers=get_headers(panel_id)).json()
+    res = requests.get(url, headers=get_headers_skyforgia(panel_id)).json()
     if "data" not in res or res["meta"]["pagination"]["total"] == 0:
         return None
     return res["data"][0]["attributes"]
@@ -138,7 +138,7 @@ def get_servers_by_userid_kocheng(user_id, panel_id):
     if not panel:
         return []
     url = f"{panel['url']}/api/application/users/{user_id}?include=servers"
-    res = requests.get(url, headers=get_headers(panel_id)).json()
+    res = requests.get(url, headers=get_headers_kocheng(panel_id)).json()
     if "relationships" not in res["attributes"]:
         return []
     return res["attributes"]["relationships"]["servers"]["data"]
@@ -148,7 +148,7 @@ def get_servers_by_userid_skyforgia(user_id, panel_id):
     if not panel:
         return []
     url = f"{panel['url']}/api/application/users/{user_id}?include=servers"
-    res = requests.get(url, headers=get_headers(panel_id)).json()
+    res = requests.get(url, headers=get_headers_skyforgia(panel_id)).json()
     if "relationships" not in res["attributes"]:
         return []
     return res["attributes"]["relationships"]["servers"]["data"]
@@ -156,23 +156,23 @@ def get_servers_by_userid_skyforgia(user_id, panel_id):
 def list_files_kocheng(panel_id, uuid, directory="/"):
     panel = PANELS_KOCHENG.get(panel_id)
     url = f"{panel['url']}/api/client/servers/{uuid}/files/list?directory={directory}"
-    return requests.get(url, headers=get_client_headers(panel_id)).json()
+    return requests.get(url, headers=get_client_headers_kocheng(panel_id)).json()
     
 def list_files_skyforgia(panel_id, uuid, directory="/"):
     panel = PANELS_SKYFORGIA.get(panel_id)
     url = f"{panel['url']}/api/client/servers/{uuid}/files/list?directory={directory}"
-    return requests.get(url, headers=get_client_headers(panel_id)).json()
+    return requests.get(url, headers=get_client_headers_skyforgia(panel_id)).json()
 
 def ptero_download_file_kocheng(panel_id, uuid, path):
     panel = PANELS_KOCHENG.get(panel_id)
     url = f"{panel['url']}/api/client/servers/{uuid}/files/contents?file={path}"
-    res = requests.get(url, headers=get_client_headers(panel_id))
+    res = requests.get(url, headers=get_client_headers_kocheng(panel_id))
     return res.content if res.status_code == 200 else None
     
 def ptero_download_file_skyforgia(panel_id, uuid, path):
     panel = PANELS_SKYFORGIA.get(panel_id)
     url = f"{panel['url']}/api/client/servers/{uuid}/files/contents?file={path}"
-    res = requests.get(url, headers=get_client_headers(panel_id))
+    res = requests.get(url, headers=get_client_headers_skyforgia(panel_id))
     return res.content if res.status_code == 200 else None
     
 def build_zip_memory_kocheng(panel_id, uuid):
