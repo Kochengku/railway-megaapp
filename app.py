@@ -282,7 +282,7 @@ def upload_skyforgia():
     return jsonify({"message": "Uploaded to MEGA", "filename": filename})
 
 @app.route("/build/kocheng/backup", methods=["POST"])
-def build_backup():
+def build_backup_kocheng():
     data = request.get_json()
 
     email = data.get("email")
@@ -312,7 +312,7 @@ def build_backup():
     )
     
 @app.route("/build/skyforgia/backup", methods=["POST"])
-def build_backup():
+def build_backup_skyforgia():
     data = request.get_json()
 
     email = data.get("email")
