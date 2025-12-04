@@ -2,6 +2,7 @@ import os
 import subprocess
 from flask import Flask, request, jsonify, send_file
 import requests
+import io
 
 app = Flask(__name__)
 UPLOAD_DIR = "uploads"
