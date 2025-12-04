@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify, send_file
 import requests
 import io
 import zipfile
+import time
 
 app = Flask(__name__)
 UPLOAD_DIR = "uploads"
@@ -89,17 +90,121 @@ mega_login()  # auto login
 # ==================================================================
 # Helper: Menjalankan MEGAcmd
 # ==================================================================
-def mega_put_kocheng(local, remote="/Kocheng_backup/"):
-    return subprocess.run(
-        ["mega-put", local, remote],
-        capture_output=True, text=True
-    )
+def mega_put_kocheng(local, remote="/Kocheng_backup/", retry=3, timeout=300):
+    filename = os.path.basename(local)
+    remote_path = remote + filename
+
+    for attempt in range(1, retry + 1):
+        try:
+            print(f"[MEGA] Upload attempt {attempt}: {local}")
+
+            result = subprocess.run(
+                ["mega-put", local, remote],
+                capture_output=True,
+                text=True,
+                timeout=timeout   # ✅ cegah hang
+            )
+
+            if result.returncode == 0:
+                print("[MEGA] Upload sukses")
+
+                # ✅ LANGSUNG AMBIL LINK
+                export = subprocess.run(
+                    ["mega-export", "-a", remote_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+
+                if export.returncode == 0:
+                    for line in export.stdout.splitlines():
+                        if "https://mega.nz/" in line:
+                            mega_link = line.strip()
+                            print("[MEGA] Link:", mega_link)
+
+                            return {
+                                "success": True,
+                                "link": mega_link
+                            }
+
+                print("[MEGA] Gagal ambil link:", export.stderr)
+                return {
+                    "success": True,
+                    "link": None
+                }
+
+            print("[MEGA] Upload gagal:", result.stderr)
+
+        except subprocess.TimeoutExpired:
+            print("[MEGA] Timeout saat upload (mega-put terlalu lama)")
+
+        except Exception as e:
+            print("[MEGA] Error:", str(e))
+
+        time.sleep(5)
+
+    return {
+        "success": False,
+        "link": None
+    }
     
-def mega_put_skyforgia(local, remote="/Skyforgia_backup/"):
-    return subprocess.run(
-        ["mega-put", local, remote],
-        capture_output=True, text=True
-    )
+def mega_put_skyforgia(local, remote="/Skyforgia_backup/", retry=3, timeout=300):
+    filename = os.path.basename(local)
+    remote_path = remote + filename
+
+    for attempt in range(1, retry + 1):
+        try:
+            print(f"[MEGA] Upload attempt {attempt}: {local}")
+
+            result = subprocess.run(
+                ["mega-put", local, remote],
+                capture_output=True,
+                text=True,
+                timeout=timeout   # ✅ cegah hang
+            )
+
+            if result.returncode == 0:
+                print("[MEGA] Upload sukses")
+
+                # ✅ LANGSUNG AMBIL LINK
+                export = subprocess.run(
+                    ["mega-export", "-a", remote_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+
+                if export.returncode == 0:
+                    for line in export.stdout.splitlines():
+                        if "https://mega.nz/" in line:
+                            mega_link = line.strip()
+                            print("[MEGA] Link:", mega_link)
+
+                            return {
+                                "success": True,
+                                "link": mega_link
+                            }
+
+                print("[MEGA] Gagal ambil link:", export.stderr)
+                return {
+                    "success": True,
+                    "link": None
+                }
+
+            print("[MEGA] Upload gagal:", result.stderr)
+
+        except subprocess.TimeoutExpired:
+            print("[MEGA] Timeout saat upload (mega-put terlalu lama)")
+
+        except Exception as e:
+            print("[MEGA] Error:", str(e))
+
+        time.sleep(5)
+
+    return {
+        "success": False,
+        "link": None
+    }
 
 def mega_get(remote, local):
     return subprocess.run(
@@ -177,10 +282,16 @@ def ptero_download_file_skyforgia(panel_id, uuid, path):
     res = requests.get(url, headers=get_client_headers_skyforgia(panel_id))
     return res.content if res.status_code == 200 else None
     
-def build_zip_memory_kocheng(panel_id, uuid):
+def build_zip_file_kocheng(panel_id, uuid, email):
     visited_paths = set()
-    zip_buffer = io.BytesIO()
-    zipf = zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED)
+
+    zip_path = f"/tmp/backup_{email}.zip"
+
+    # ✅ Pastikan tidak ada file lama
+    if os.path.exists(zip_path):
+        os.remove(zip_path)
+
+    zipf = zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED)
 
     def add_path(base_dir="/"):
         if base_dir in visited_paths:
@@ -188,15 +299,18 @@ def build_zip_memory_kocheng(panel_id, uuid):
         visited_paths.add(base_dir)
 
         files = list_files_kocheng(panel_id, uuid, base_dir)
+
         for f in files.get("data", []):
             name = f["attributes"]["name"]
             is_file = f["attributes"]["is_file"]
             size = f["attributes"]["size"]
+
             rel_path = os.path.join(base_dir, name).replace("//", "/")
 
             if name in ("node_modules", ".", ".."):
                 continue
 
+            # ✅ Skip file besar
             if is_file and size > 50 * 1024 * 1024:
                 continue
 
@@ -209,13 +323,19 @@ def build_zip_memory_kocheng(panel_id, uuid):
 
     add_path("/")
     zipf.close()
-    zip_buffer.seek(0)
-    return zip_bufferffer
+
+    return zip_path
     
-def build_zip_memory_skyforgia(panel_id, uuid):
+def build_zip_file_skyforgia(panel_id, uuid, email):
     visited_paths = set()
-    zip_buffer = io.BytesIO()
-    zipf = zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED)
+
+    zip_path = f"/tmp/backup_{email}.zip"
+
+    # ✅ Pastikan tidak ada file lama
+    if os.path.exists(zip_path):
+        os.remove(zip_path)
+
+    zipf = zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED)
 
     def add_path(base_dir="/"):
         if base_dir in visited_paths:
@@ -223,15 +343,18 @@ def build_zip_memory_skyforgia(panel_id, uuid):
         visited_paths.add(base_dir)
 
         files = list_files_skyforgia(panel_id, uuid, base_dir)
+
         for f in files.get("data", []):
             name = f["attributes"]["name"]
             is_file = f["attributes"]["is_file"]
             size = f["attributes"]["size"]
+
             rel_path = os.path.join(base_dir, name).replace("//", "/")
 
             if name in ("node_modules", ".", ".."):
                 continue
 
+            # ✅ Skip file besar
             if is_file and size > 50 * 1024 * 1024:
                 continue
 
@@ -244,8 +367,144 @@ def build_zip_memory_skyforgia(panel_id, uuid):
 
     add_path("/")
     zipf.close()
-    zip_buffer.seek(0)
-    return zip_bufferffer
+
+    return zip_path
+    
+def notify_heroku_backup_done_kocheng(email, filename, mega_link):
+    try:
+        requests.post(
+            "https://control.kocheng.biz.id/api/backup-finished",
+            json={
+                "email": email,
+                "filename": filename,
+                "mega_link": mega_link
+            },
+            timeout=5
+        )
+    except Exception as e:
+        print("Callback gagal:", str(e))
+        
+def notify_heroku_backup_done_skyforgia(email, filename, mega_link):
+    try:
+        requests.post(
+            "https://control.skyforgia.web.id/api/backup-finished",
+            json={
+                "email": email,
+                "filename": filename,
+                "mega_link": mega_link
+            },
+            timeout=5
+        )
+    except Exception as e:
+        print("Callback gagal:", str(e))
+        
+def process_backup_kocheng(email, panel_id):
+    zip_path = None
+
+    try:
+        p_user = get_ptero_user_kocheng(email, panel_id)
+        if not p_user:
+            print("User panel tidak ditemukan")
+            return
+
+        servers = get_servers_by_userid_kocheng(p_user["id"], panel_id)
+        if not servers:
+            print("Server tidak ditemukan")
+            return
+
+        uuid = servers[0]["attributes"]["uuid"]
+
+        print("Mulai build zip:", email)
+
+        zip_path = build_zip_file_kocheng(panel_id, uuid, email)
+        filename = os.path.basename(zip_path)
+
+        print("Upload ke MEGA:", filename)
+
+        with open(zip_path, "rb") as f:
+            files = {
+                "file": (filename, f, "application/zip")
+            }
+
+            r = requests.post(
+                f"{MEGA_API}/mega/kocheng/upload",
+                files=files,
+                timeout=300
+            )
+
+            if r.status_code != 200:
+                print("Gagal upload ke MEGA:", r.text)
+                return
+
+            data = r.json()
+            mega_link = data.get("mega_link")
+
+            print("Upload selesai:", filename)
+            print("Link MEGA:", mega_link)
+
+        # ✅ NOTIFY HEROKU + KIRIM LINK
+        notify_heroku_backup_done_kocheng(email, filename, mega_link)
+
+    except Exception as e:
+        print("Backup error:", str(e))
+
+    finally:
+        if zip_path and os.path.exists(zip_path):
+            os.remove(zip_path)
+        
+def process_backup_skyforgia(email, panel_id):
+    zip_path = None
+
+    try:
+        p_user = get_ptero_user_skyforgia(email, panel_id)
+        if not p_user:
+            print("User panel tidak ditemukan")
+            return
+
+        servers = get_servers_by_userid_skyforgia(p_user["id"], panel_id)
+        if not servers:
+            print("Server tidak ditemukan")
+            return
+
+        uuid = servers[0]["attributes"]["uuid"]
+
+        print("Mulai build zip:", email)
+
+        zip_path = build_zip_file_skyforgia(panel_id, uuid, email)
+        filename = os.path.basename(zip_path)
+
+        print("Upload ke MEGA:", filename)
+
+        with open(zip_path, "rb") as f:
+            files = {
+                "file": (filename, f, "application/zip")
+            }
+
+            r = requests.post(
+                f"{MEGA_API}/mega/skyforgia/upload",
+                files=files,
+                timeout=300
+            )
+
+            if r.status_code != 200:
+                print("Gagal upload ke MEGA:", r.text)
+                return
+
+            data = r.json()
+            mega_link = data.get("mega_link")
+
+            print("Upload selesai:", filename)
+            print("Link MEGA:", mega_link)
+
+        # ✅ NOTIFY HEROKU + KIRIM LINK
+        notify_heroku_backup_done_skyforgia(email, filename, mega_link)
+
+    except Exception as e:
+        print("Backup error:", str(e))
+
+    finally:
+        if zip_path and os.path.exists(zip_path):
+            os.remove(zip_path)
 
 # ==================================================================
 # UPLOAD (Heroku -> Railway -> MEGA)
@@ -262,13 +521,17 @@ def upload_kocheng():
 
     result = mega_put_kocheng(local_path)
 
-    if result.returncode != 0:
-        return jsonify({"error": "Mega upload failed", "detail": result.stderr}), 500
+    if not result["success"]:
+        return jsonify({"error": "Mega upload failed"}), 500
 
-    return jsonify({"message": "Uploaded to MEGA", "filename": filename})
+    return jsonify({
+        "message": "Uploaded to MEGA",
+        "filename": filename,
+        "mega_link": result["link"]
+    })
     
 @app.route("/mega/skyforgia/upload", methods=["POST"])
-def upload_skyforgia():
+def upload_kocheng():
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
@@ -279,10 +542,14 @@ def upload_skyforgia():
 
     result = mega_put_skyforgia(local_path)
 
-    if result.returncode != 0:
-        return jsonify({"error": "Mega upload failed", "detail": result.stderr}), 500
+    if not result["success"]:
+        return jsonify({"error": "Mega upload failed"}), 500
 
-    return jsonify({"message": "Uploaded to MEGA", "filename": filename})
+    return jsonify({
+        "message": "Uploaded to MEGA",
+        "filename": filename,
+        "mega_link": result["link"]
+    })
 
 @app.route("/build/kocheng/backup", methods=["POST"])
 def build_backup_kocheng():
@@ -294,28 +561,18 @@ def build_backup_kocheng():
     if not email or not panel_id:
         return jsonify({"error": "email & panel_id wajib"}), 400
 
-    p_user = get_ptero_user_kocheng(email, panel_id)
-    if not p_user:
-        return jsonify({"error": "User panel tidak ditemukan"}), 404
+    Thread(
+        target=process_backup_kocheng,
+        args=(email, panel_id)
+    ).start()
 
-    servers = get_servers_by_userid_kocheng(p_user["id"], panel_id)
-    if not servers:
-        return jsonify({"error": "Server tidak ditemukan"}), 404
-
-    uuid = servers[0]["attributes"]["uuid"]
-    filename = f"backup_{email}.zip"
-
-    zip_buffer = build_zip_memory_kocheng(panel_id, uuid)
-
-    return send_file(
-        zip_buffer,
-        mimetype="application/zip",
-        as_attachment=True,
-        download_name=filename
-    )
+    return jsonify({
+        "status": "Backup sedang diproses",
+        "email": email
+    }), 200
     
 @app.route("/build/skyforgia/backup", methods=["POST"])
-def build_backup_skyforgia():
+def build_backup_kocheng():
     data = request.get_json()
 
     email = data.get("email")
@@ -324,25 +581,15 @@ def build_backup_skyforgia():
     if not email or not panel_id:
         return jsonify({"error": "email & panel_id wajib"}), 400
 
-    p_user = get_ptero_user_skyforgia(email, panel_id)
-    if not p_user:
-        return jsonify({"error": "User panel tidak ditemukan"}), 404
+    Thread(
+        target=process_backup_skyforgia,
+        args=(email, panel_id)
+    ).start()
 
-    servers = get_servers_by_userid_skyforgia(p_user["id"], panel_id)
-    if not servers:
-        return jsonify({"error": "Server tidak ditemukan"}), 404
-
-    uuid = servers[0]["attributes"]["uuid"]
-    filename = f"backup_{email}.zip"
-
-    zip_buffer = build_zip_memory_skyforgia(panel_id, uuid)
-
-    return send_file(
-        zip_buffer,
-        mimetype="application/zip",
-        as_attachment=True,
-        download_name=filename
-    )
+    return jsonify({
+        "status": "Backup sedang diproses",
+        "email": email
+    }), 200
 # ==================================================================
 # DOWNLOAD (Heroku -> Railway)
 # ==================================================================
