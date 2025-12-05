@@ -13,28 +13,31 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 MEGA_API = "https://unpleasant-christi-1kocheng-ea5544f0.koyeb.app"
 
-PANELS_KOCHENG = {
-    "server1": {
-        "url": "https://console.kocheng.tech",
-        "api_key": "ptla_iSj8zMtCvlSV05XphQKr4QLKUa7t5jm2CG9rXsJlYSZ",
-        "client_api_key": "ptlc_OurES0aIGdkGJIHxQF4Iym1FwqLllcJczG1fBtBC2kZ"
-    },
-    "server2": {
-        "url": "https://console.kocheng.biz.id",
-        "api_key": "ptla_VyaEyCBXizyfI5Cew5RmfSXOhUdSzJT68KRTHWOXG7G",
-        "client_api_key": "ptlc_VXyniYgN9KnHm0xp3oGpLt3iSotH8tVIkQGCbTcOoSo"
-    }
-    # Bisa ditambah server3, dst...
+KOCHENG_API = "https://control.kocheng.biz.id/api/panels"
+SKYFORGIA_API = "https://control.skyforgia.web.id/api/panels"
+
+HEADERS = {
+    "X-CONTROL-KEY": "KUNCI_WEB_A"
 }
 
-PANELS_SKYFORGIA = {
-    "server1": {
-        "url": "https://console.skyforgia.web.id",
-        "api_key": "ptla_KCpE3wrwnAsOBUp54Glx8onHfVEvtC0PDtDtuZIUz0v",
-        "client_api_key": "ptlc_rAAYmyY18RGbDR3aaLW4VbamzuZfSEdAekKGo8ankwm"
-    }
-    # Bisa ditambah server3, dst...
-}
+def get_panels_kocheng():
+    try:
+        r = requests.get(KOCHENG_API, headers=HEADERS, timeout=10)
+        return r.json() if r.ok else {}
+    except Exception as e:
+        print("KOCHENG ERROR:", e)
+        return {}
+
+def get_panels_skyforgia():
+    try:
+        r = requests.get(SKYFORGIA_API, headers=HEADERS, timeout=10)
+        return r.json() if r.ok else {}
+    except Exception as e:
+        print("SKYFORGIA ERROR:", e)
+        return {}
+        
+PANELS_KOCHENG = get_panels_kocheng()
+PANELS_SKYFORGIA = get_panels_skyforgia()
 
 def get_headers_kocheng(panel_id):
     return {
