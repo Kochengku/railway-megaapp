@@ -382,7 +382,7 @@ def notify_heroku_backup_done_kocheng(email, filename, mega_link):
                 "filename": filename,
                 "mega_link": mega_link
             },
-            timeout=5
+            timeout=10
         )
     except Exception as e:
         print("Callback gagal:", str(e))
@@ -396,7 +396,7 @@ def notify_heroku_backup_done_skyforgia(email, filename, mega_link):
                 "filename": filename,
                 "mega_link": mega_link
             },
-            timeout=5
+            timeout=10
         )
     except Exception as e:
         print("Callback gagal:", str(e))
@@ -407,27 +407,19 @@ def process_backup_kocheng(email, panel_id):
     try:
         p_user = get_ptero_user_kocheng(email, panel_id)
         if not p_user:
-            print("User panel tidak ditemukan")
             return
 
         servers = get_servers_by_userid_kocheng(p_user["id"], panel_id)
         if not servers:
-            print("Server tidak ditemukan")
             return
 
         uuid = servers[0]["attributes"]["uuid"]
 
-        print("Mulai build zip:", email)
-
         zip_path = build_zip_file_kocheng(panel_id, uuid, email)
         filename = os.path.basename(zip_path)
 
-        print("Upload ke MEGA:", filename)
-
         with open(zip_path, "rb") as f:
-            files = {
-                "file": (filename, f, "application/zip")
-            }
+            files = {"file": (filename, f, "application/zip")}
 
             r = requests.post(
                 f"{MEGA_API}/mega/kocheng/upload",
@@ -442,10 +434,7 @@ def process_backup_kocheng(email, panel_id):
             data = r.json()
             mega_link = data.get("mega_link")
 
-            print("Upload selesai:", filename)
-            print("Link MEGA:", mega_link)
-
-        # ✅ NOTIFY HEROKU + KIRIM LINK
+        # ✅ CALLBACK KE SERVER CONTROL
         notify_heroku_backup_done_kocheng(email, filename, mega_link)
 
     except Exception as e:
@@ -461,27 +450,19 @@ def process_backup_skyforgia(email, panel_id):
     try:
         p_user = get_ptero_user_skyforgia(email, panel_id)
         if not p_user:
-            print("User panel tidak ditemukan")
             return
 
         servers = get_servers_by_userid_skyforgia(p_user["id"], panel_id)
         if not servers:
-            print("Server tidak ditemukan")
             return
 
         uuid = servers[0]["attributes"]["uuid"]
 
-        print("Mulai build zip:", email)
-
         zip_path = build_zip_file_skyforgia(panel_id, uuid, email)
         filename = os.path.basename(zip_path)
 
-        print("Upload ke MEGA:", filename)
-
         with open(zip_path, "rb") as f:
-            files = {
-                "file": (filename, f, "application/zip")
-            }
+            files = {"file": (filename, f, "application/zip")}
 
             r = requests.post(
                 f"{MEGA_API}/mega/skyforgia/upload",
@@ -496,10 +477,7 @@ def process_backup_skyforgia(email, panel_id):
             data = r.json()
             mega_link = data.get("mega_link")
 
-            print("Upload selesai:", filename)
-            print("Link MEGA:", mega_link)
-
-        # ✅ NOTIFY HEROKU + KIRIM LINK
+        # ✅ CALLBACK KE SERVER CONTROL
         notify_heroku_backup_done_skyforgia(email, filename, mega_link)
 
     except Exception as e:
@@ -570,9 +548,9 @@ def build_backup_kocheng():
     ).start()
 
     return jsonify({
-        "status": "Backup sedang diproses",
+        "status": "processing",
         "email": email
-    }), 200
+    }), 202
     
 @app.route("/build/skyforgia/backup", methods=["POST"])
 def build_backup_skyforgia():
@@ -590,9 +568,9 @@ def build_backup_skyforgia():
     ).start()
 
     return jsonify({
-        "status": "Backup sedang diproses",
+        "status": "processing",
         "email": email
-    }), 200
+    }), 202
 # ==================================================================
 # DOWNLOAD (Heroku -> Railway)
 # ==================================================================
