@@ -11,6 +11,8 @@ app = Flask(__name__)
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+MEGA_API = "https://unpleasant-christi-1kocheng-ea5544f0.koyeb.app"
+
 PANELS_KOCHENG = {
     "server1": {
         "url": "https://console.kocheng.tech",
@@ -532,7 +534,7 @@ def upload_kocheng():
     })
     
 @app.route("/mega/skyforgia/upload", methods=["POST"])
-def upload_kocheng():
+def upload_skyforgia():
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
@@ -573,7 +575,7 @@ def build_backup_kocheng():
     }), 200
     
 @app.route("/build/skyforgia/backup", methods=["POST"])
-def build_backup_kocheng():
+def build_backup_skyforgia():
     data = request.get_json()
 
     email = data.get("email")
