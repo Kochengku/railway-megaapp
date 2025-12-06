@@ -455,47 +455,85 @@ def notify_heroku_backup_done_skyforgia(email, filename, mega_link):
         print("Callback gagal:", str(e))
         
 def process_backup_kocheng(email, panel_id):
-    zip_path = None
 
-    try:
-        p_user = get_ptero_user_kocheng(email, panel_id)
-        if not p_user:
-            return
+    p_user = get_ptero_user_kocheng(email, panel_id)
+    if not p_user:
+        print(f"[ERROR] User {user.email} tidak ditemukan di {panel_id}")
+        return False
 
-        servers = get_servers_by_userid_kocheng(p_user["id"], panel_id)
-        if not servers:
-            return
+    servers = get_servers_by_userid_kocheng(p_user["id"], panel_id)
+    if not servers:
+        print(f"[INFO] {user.email} tidak punya server di {panel_id}")
+        return False
 
-        uuid = servers[0]["attributes"]["uuid"]
+    backup_name = f"backup_{user.email}.zip"
 
-        zip_path = build_zip_file_kocheng(panel_id, uuid, email)
-        filename = os.path.basename(zip_path)
+    # === ZIP GLOBAL (GABUNGAN SEMUA SERVER) ===
+    mem_zip = io.BytesIO()
+    zipf = zipfile.ZipFile(mem_zip, "w", zipfile.ZIP_DEFLATED)
 
-        with open(zip_path, "rb") as f:
-            files = {"file": (filename, f, "application/zip")}
+    for srv in servers:
+        uuid = srv["attributes"]["uuid"]
 
+        print(f"[INFO] Request backup server {uuid} ke ZIP API")
+
+        try:
             r = requests.post(
-                f"{MEGA_API}/mega/kocheng/upload",
-                files=files,
+                f"{MEGA_API}/build/kocheng/backup",
+                json={
+                    "email": user.email,
+                    "panel_id": panel_id,
+                    "uuid": uuid
+                },
                 timeout=300
             )
+        except Exception as e:
+            print(f"[FAILED] Gagal request ZIP API: {str(e)}")
+            continue
 
-            if r.status_code != 200:
-                print("Gagal upload ke MEGA:", r.text)
-                return
+        if r.status_code != 200:
+            print(f"[FAILED] ZIP API error: {r.text}")
+            continue
 
-            data = r.json()
-            mega_link = data.get("mega_link")
+        # === MASUKKAN ZIP SERVER KE ZIP GLOBAL ===
+        server_zip = io.BytesIO(r.content)
 
-        # ✅ CALLBACK KE SERVER CONTROL
-        notify_heroku_backup_done_kocheng(email, filename, mega_link)
+        with zipfile.ZipFile(server_zip, "r") as sz:
+            for file in sz.namelist():
+                content = sz.read(file)
+                zipf.writestr(file, content)
+
+    zipf.close()
+    mem_zip.seek(0)
+
+    # === UPLOAD KE API MEGA ===
+    try:
+        files = {"file": (backup_name, mem_zip.getvalue())}
+        payload = {
+            "filename": backup_name,
+            "email": user.email
+        }
+
+        r = requests.post(
+            f"{MEGA_API}/mega/kocheng/upload",
+            files=files,
+            data=payload,
+            timeout=300
+        )
 
     except Exception as e:
-        print("Backup error:", str(e))
+        print(f"[FAILED] Gagal memanggil API upload Mega: {str(e)}")
+        return False
 
-    finally:
-        if zip_path and os.path.exists(zip_path):
-            os.remove(zip_path)
+    # === HASIL UPLOAD ===
+    if r.status_code != 200:
+        print(f"[FAILED] Upload ke Mega gagal: {r.text}")
+        return False
+
+    # === JIKA SUKSES ===
+    print(f"[OK] Backup {backup_name} berhasil diupload ke Mega")
+
+    return True
         
 def process_backup_skyforgia(email, panel_id):
     zip_path = None
@@ -584,7 +622,7 @@ def upload_skyforgia():
         "filename": filename,
         "mega_link": result["link"]
     })
-
+    
 @app.route("/build/kocheng/backup", methods=["POST"])
 def build_backup_kocheng():
     data = request.get_json()
@@ -595,10 +633,10 @@ def build_backup_kocheng():
     if not email or not panel_id:
         return jsonify({"error": "email & panel_id wajib"}), 400
 
-    print("[API] Backup request masuk:", email, panel_id)
-    sys.stdout.flush()
-
-    process_backup_kocheng
+    Thread(
+        target=process_backup_kocheng,
+        args=(email, panel_id)
+    ).start()
 
     return jsonify({
         "status": "processing",
