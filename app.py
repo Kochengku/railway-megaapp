@@ -257,22 +257,38 @@ def mega_check(remote):
     )
  
 def get_ptero_user_kocheng(email, panel_id):
-    panel = PANELS_KOCHENG.get(panel_id)
-    if not panel:
+    try:
+        panel = PANELS_KOCHENG.get(panel_id)
+        if not panel:
+            print("[FATAL] panel_id tidak valid:", panel_id)
+            return None
+
+        url = f"{panel['url']}/api/application/users?filter[email]={email}"
+        print("[CALL] GET USER:", url)
+
+        res = requests.get(
+            url,
+            headers=get_headers_kocheng(panel_id),
+            timeout=10
+        )
+
+        print("[HTTP] status:", res.status_code)
+
+        data = res.json()
+        print("[JSON] user response:", data)
+
+        if "data" not in data or data.get("meta", {}).get("pagination", {}).get("total", 0) == 0:
+            print("[STOP] user tidak ditemukan di panel")
+            return None
+
+        return data["data"][0]["attributes"]
+
+    except requests.exceptions.Timeout:
+        print("[TIMEOUT] API USER TIMEOUT")
         return None
-
-    url = f"{panel['url']}/api/application/users?filter[email]={email}"
-
-    res = requests.get(
-        url,
-        headers=get_headers_kocheng(panel_id),
-        timeout=15   # ✅ WAJIB
-    ).json()
-
-    if "data" not in res or res["meta"]["pagination"]["total"] == 0:
+    except Exception as e:
+        print("[ERROR] get_ptero_user_kocheng:", str(e))
         return None
-
-    return res["data"][0]["attributes"]
     
 def get_ptero_user_skyforgia(email, panel_id):
     panel = PANELS_SKYFORGIA.get(panel_id)
