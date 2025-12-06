@@ -466,7 +466,7 @@ def process_backup_kocheng(email, panel_id):
         print(f"[INFO] {user.email} tidak punya server di {panel_id}")
         return False
 
-    backup_name = f"backup_{user.email}.zip"
+    backup_name = f"backup_{email}.zip"
 
     # === ZIP GLOBAL (GABUNGAN SEMUA SERVER) ===
     mem_zip = io.BytesIO()
