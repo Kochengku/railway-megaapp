@@ -257,38 +257,16 @@ def mega_check(remote):
     )
  
 def get_ptero_user_kocheng(email, panel_id):
-    try:
-        panel = PANELS_KOCHENG.get(panel_id)
-        if not panel:
-            print("[FATAL] panel_id tidak valid:", panel_id)
-            return None
-
-        url = f"{panel['url']}/api/application/users?filter[email]={email}"
-        print("[CALL] GET USER:", url)
-
-        res = requests.get(
-            url,
-            headers=get_headers_kocheng(panel_id),
-            timeout=10
-        )
-
-        print("[HTTP] status:", res.status_code)
-
-        data = res.json()
-        print("[JSON] user response:", data)
-
-        if "data" not in data or data.get("meta", {}).get("pagination", {}).get("total", 0) == 0:
-            print("[STOP] user tidak ditemukan di panel")
-            return None
-
-        return data["data"][0]["attributes"]
-
-    except requests.exceptions.Timeout:
-        print("[TIMEOUT] API USER TIMEOUT")
+    panel = PANELS_KOCHENG.get(panel_id)
+    if not panel:
+        print(f"[ERROR] Panel {panel_id} tidak ditemukan")
         return None
-    except Exception as e:
-        print("[ERROR] get_ptero_user_kocheng:", str(e))
+
+    url = f"{panel['url']}/api/application/users?filter[email]={email}"
+    res = requests.get(url, headers=get_headers_kocheng(panel_id)).json()
+    if "data" not in res or res["meta"]["pagination"]["total"] == 0:
         return None
+    return res["data"][0]["attributes"]
     
 def get_ptero_user_skyforgia(email, panel_id):
     panel = PANELS_SKYFORGIA.get(panel_id)
@@ -305,18 +283,10 @@ def get_servers_by_userid_kocheng(user_id, panel_id):
     panel = PANELS_KOCHENG.get(panel_id)
     if not panel:
         return []
-
     url = f"{panel['url']}/api/application/users/{user_id}?include=servers"
-
-    res = requests.get(
-        url,
-        headers=get_headers_kocheng(panel_id),
-        timeout=15   # ✅ WAJIB
-    ).json()
-
+    res = requests.get(url, headers=get_headers_kocheng(panel_id)).json()
     if "relationships" not in res["attributes"]:
         return []
-
     return res["attributes"]["relationships"]["servers"]["data"]
     
 def get_servers_by_userid_skyforgia(user_id, panel_id):
@@ -330,14 +300,10 @@ def get_servers_by_userid_skyforgia(user_id, panel_id):
     return res["attributes"]["relationships"]["servers"]["data"]
     
 def list_files_kocheng(panel_id, uuid, directory="/"):
-    panel = PANELS_KOCHENG.get(panel_id)
+    PANELS_KOCHENG.get(panel_id)
     url = f"{panel['url']}/api/client/servers/{uuid}/files/list?directory={directory}"
-
-    return requests.get(
-        url,
-        headers=get_client_headers_kocheng(panel_id),
-        timeout=15
-    ).json()
+    res = requests.get(url, headers=get_client_headers_kocheng(panel_id)).json()
+    return res
     
 def list_files_skyforgia(panel_id, uuid, directory="/"):
     panel = PANELS_SKYFORGIA.get(panel_id)
@@ -347,14 +313,10 @@ def list_files_skyforgia(panel_id, uuid, directory="/"):
 def ptero_download_file_kocheng(panel_id, uuid, path):
     panel = PANELS_KOCHENG.get(panel_id)
     url = f"{panel['url']}/api/client/servers/{uuid}/files/contents?file={path}"
-
-    res = requests.get(
-        url,
-        headers=get_client_headers_kocheng(panel_id),
-        timeout=30
-    )
-
-    return res.content if res.status_code == 200 else None
+    res = requests.get(url, headers=get_client_headers_kocheng(panel_id))
+    if res.status_code == 200:
+        return res.content
+    return None
     
 def ptero_download_file_skyforgia(panel_id, uuid, path):
     panel = PANELS_SKYFORGIA.get(panel_id)
@@ -493,63 +455,39 @@ def notify_heroku_backup_done_skyforgia(email, filename, mega_link):
         print("Callback gagal:", str(e))
         
 def process_backup_kocheng(email, panel_id):
-    print("[THREAD] process_backup_kocheng FIRED")
-    sys.stdout.flush()
+    zip_path = None
 
     try:
-        print("[DEBUG] email:", email)
-        print("[DEBUG] panel_id:", panel_id)
-        sys.stdout.flush()
-        
-        zip_path = None
-
-        print("[START] Backup:", email, panel_id)
-
         p_user = get_ptero_user_kocheng(email, panel_id)
-        print("[DEBUG] p_user:", p_user)
         if not p_user:
-            print("[STOP] p_user kosong")
             return
 
         servers = get_servers_by_userid_kocheng(p_user["id"], panel_id)
-        print("[DEBUG] servers:", servers)
         if not servers:
-            print("[STOP] servers kosong")
             return
 
         uuid = servers[0]["attributes"]["uuid"]
-        print("[DEBUG] uuid:", uuid)
 
         zip_path = build_zip_file_kocheng(panel_id, uuid, email)
-        print("[DEBUG] zip_path:", zip_path)
-
-        if not zip_path or not os.path.exists(zip_path):
-            print("[STOP] ZIP tidak terbentuk")
-            return
-
         filename = os.path.basename(zip_path)
 
         with open(zip_path, "rb") as f:
             files = {"file": (filename, f, "application/zip")}
 
-            print("[UPLOAD] ke MEGA...")
             r = requests.post(
                 f"{MEGA_API}/mega/kocheng/upload",
                 files=files,
                 timeout=300
             )
 
-            print("[MEGA] status:", r.status_code)
-            print("[MEGA] response:", r.text)
-
             if r.status_code != 200:
-                print("Gagal upload ke MEGA")
+                print("Gagal upload ke MEGA:", r.text)
                 return
 
             data = r.json()
             mega_link = data.get("mega_link")
 
-        print("[CALLBACK] kirim ke control panel")
+        # ✅ CALLBACK KE SERVER CONTROL
         notify_heroku_backup_done_kocheng(email, filename, mega_link)
 
     except Exception as e:
