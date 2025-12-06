@@ -443,9 +443,16 @@ def notify_heroku_backup_done_skyforgia(email, filename, mega_link):
         print("Callback gagal:", str(e))
         
 def process_backup_kocheng(email, panel_id):
-    zip_path = None
+    print("[THREAD] process_backup_kocheng FIRED")
+    sys.stdout.flush()
 
     try:
+        print("[DEBUG] email:", email)
+        print("[DEBUG] panel_id:", panel_id)
+        sys.stdout.flush()
+        
+        zip_path = None
+
         print("[START] Backup:", email, panel_id)
 
         p_user = get_ptero_user_kocheng(email, panel_id)
