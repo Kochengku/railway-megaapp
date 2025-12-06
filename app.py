@@ -64,8 +64,12 @@ PANELS_SKYFORGIA = {
 }
 
 def get_headers_kocheng(panel_id):
+    panel = PANELS_KOCHENG.get(panel_id)
+    if not panel:
+        raise ValueError(f"Panel ID tidak valid: {panel_id}")
+
     return {
-        "Authorization": f"Bearer {PANELS_KOCHENG[panel_id]['api_key']}",
+        "Authorization": f"Bearer {panel['api_key']}",
         "Accept": "application/json",
         "Content-Type": "application/json"
     }
@@ -78,8 +82,12 @@ def get_headers_skyforgia(panel_id):
     }
     
 def get_client_headers_kocheng(panel_id):
+    panel = PANELS_KOCHENG.get(panel_id)
+    if not panel:
+        raise ValueError(f"Panel ID tidak valid: {panel_id}")
+
     return {
-        "Authorization": f"Bearer {PANELS_KOCHENG[panel_id]['client_api_key']}",
+        "Authorization": f"Bearer {panel['client_api_key']}",
         "Accept": "application/json",
         "Content-Type": "application/json"
     }
@@ -274,11 +282,15 @@ def get_servers_by_userid_kocheng(user_id, panel_id):
     panel = PANELS_KOCHENG.get(panel_id)
     if not panel:
         return []
+
     url = f"{panel['url']}/api/application/users/{user_id}?include=servers"
     res = requests.get(url, headers=get_headers_kocheng(panel_id)).json()
-    if "relationships" not in res["attributes"]:
+
+    try:
+        return res["attributes"]["relationships"]["servers"]["data"]
+    except:
+        print("[ERROR] Gagal ambil server user:", res)
         return []
-    return res["attributes"]["relationships"]["servers"]["data"]
     
 def get_servers_by_userid_skyforgia(user_id, panel_id):
     panel = PANELS_SKYFORGIA.get(panel_id)
