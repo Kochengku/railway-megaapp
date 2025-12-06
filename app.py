@@ -334,7 +334,7 @@ def build_zip_file_kocheng(panel_id, uuid, email):
             if name in ("node_modules", ".", ".."):
                 continue
 
-            if is_file and size > 50 * 1024 * 1024:
+            if is_file and size > 20 * 1024 * 1024:
                 print(f"[SKIP] File terlalu besar: {rel_path}")
                 continue
 
@@ -392,7 +392,7 @@ def build_zip_file_skyforgia(panel_id, uuid, email):
             if name in ("node_modules", ".", ".."):
                 continue
 
-            if is_file and size > 50 * 1024 * 1024:
+            if is_file and size > 20 * 1024 * 1024:
                 print(f"[SKIP] File terlalu besar: {rel_path}")
                 continue
 
