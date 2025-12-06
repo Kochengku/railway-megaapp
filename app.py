@@ -599,10 +599,17 @@ def build_backup_kocheng():
     if not email or not panel_id:
         return jsonify({"error": "email & panel_id wajib"}), 400
 
-    Thread(
-        target=process_backup_kocheng,
-        args=(email, panel_id)
-    ).start()
+    print("[API] Backup request masuk:", email, panel_id)
+    sys.stdout.flush()
+
+    def runner():
+        print("[THREAD] Thread mulai jalan...")
+        sys.stdout.flush()
+        process_backup_kocheng(email, panel_id)
+
+    t = Thread(target=runner)
+    t.daemon = True   # ✅ WAJIB DI PRODUCTION
+    t.start()
 
     return jsonify({
         "status": "processing",
