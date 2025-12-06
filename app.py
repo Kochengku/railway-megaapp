@@ -598,14 +598,7 @@ def build_backup_kocheng():
     print("[API] Backup request masuk:", email, panel_id)
     sys.stdout.flush()
 
-    def runner():
-        print("[THREAD] Thread mulai jalan...")
-        sys.stdout.flush()
-        process_backup_kocheng(email, panel_id)
-
-    t = Thread(target=runner)
-    t.daemon = True   # ✅ WAJIB DI PRODUCTION
-    t.start()
+    process_backup_kocheng
 
     return jsonify({
         "status": "processing",
