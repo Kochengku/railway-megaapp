@@ -37,33 +37,33 @@ def get_panels_skyforgia():
         print("SKYFORGIA ERROR:", e)
         return {}
         
-#PANELS_KOCHENG = get_panels_kocheng()
-#PANELS_SKYFORGIA = get_panels_skyforgia()
+PANELS_KOCHENG = get_panels_kocheng()
+PANELS_SKYFORGIA = get_panels_skyforgia()
 
-PANELS = {
-    "server1": {
-        "url": "https://console.kocheng.tech",
-        "api_key": "ptla_iSj8zMtCvlSV05XphQKr4QLKUa7t5jm2CG9rXsJlYSZ",
-        "client_api_key": "ptlc_OurES0aIGdkGJIHxQF4Iym1FwqLllcJczG1fBtBC2kZ"
-    },
-    "server2": {
-        "url": "https://console.kocheng.biz.id",
-        "api_key": "ptla_VyaEyCBXizyfI5Cew5RmfSXOhUdSzJT68KRTHWOXG7G",
-        "client_api_key": "ptlc_VXyniYgN9KnHm0xp3oGpLt3iSotH8tVIkQGCbTcOoSo"
-    }
-    # Bisa ditambah server3, dst...
-}
-
-def get_headers(panel_id):
+def get_headers_kocheng(panel_id):
     return {
-        "Authorization": f"Bearer {PANELS[panel_id]['api_key']}",
+        "Authorization": f"Bearer {PANELS_KOCHENG[panel_id]['api_key']}",
         "Accept": "application/json",
         "Content-Type": "application/json"
     }
     
-def get_client_headers(panel_id):
+def get_client_headers_kocheng(panel_id):
     return {
-        "Authorization": f"Bearer {PANELS[panel_id]['client_api_key']}",
+        "Authorization": f"Bearer {PANELS_KOCHENG[panel_id]['client_api_key']}",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
+    
+def get_headers_skyforgia(panel_id):
+    return {
+        "Authorization": f"Bearer {PANELS_SKYFORGIA[panel_id]['api_key']}",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
+    
+def get_client_headers_skyforgia(panel_id):
+    return {
+        "Authorization": f"Bearer {PANELS_SKYFORGIA[panel_id]['client_api_key']}",
         "Accept": "application/json",
         "Content-Type": "application/json"
     }
@@ -225,42 +225,81 @@ def mega_check(remote):
         capture_output=True, text=True
     )
  
-def get_ptero_user(email, panel_id):
-    panel = PANELS.get(panel_id)
+#== FUNGSI PTERODACTYL (KOCHENG)
+def get_ptero_user_kocheng(email, panel_id):
+    panel = PANELS_KOCHENG.get(panel_id)
     if not panel:
         print(f"[ERROR] Panel {panel_id} tidak ditemukan")
         return None
 
     url = f"{panel['url']}/api/application/users?filter[email]={email}"
-    res = requests.get(url, headers=get_headers(panel_id)).json()
+    res = requests.get(url, headers=get_headers_kocheng(panel_id)).json()
     if "data" not in res or res["meta"]["pagination"]["total"] == 0:
         return None
     return res["data"][0]["attributes"]
 
-def get_servers_by_userid(user_id, panel_id):
-    panel = PANELS.get(panel_id)
+def get_servers_by_userid_kocheng(user_id, panel_id):
+    panel = PANELS_KOCHENG.get(panel_id)
     if not panel:
         return []
     url = f"{panel['url']}/api/application/users/{user_id}?include=servers"
-    res = requests.get(url, headers=get_headers(panel_id)).json()
+    res = requests.get(url, headers=get_headers_kocheng(panel_id)).json()
     if "relationships" not in res["attributes"]:
         return []
     return res["attributes"]["relationships"]["servers"]["data"]
 
-def list_files(panel_id, uuid, directory="/"):
-    panel = PANELS.get(panel_id)
+def list_files_kocheng(panel_id, uuid, directory="/"):
+    panel = PANELS_KOCHENG.get(panel_id)
     url = f"{panel['url']}/api/client/servers/{uuid}/files/list?directory={directory}"
-    res = requests.get(url, headers=get_client_headers(panel_id)).json()
+    res = requests.get(url, headers=get_client_headers_kocheng(panel_id)).json()
     return res
 
-def ptero_download_file(panel_id, uuid, path):
-    panel = PANELS.get(panel_id)
+def ptero_download_file_kocheng(panel_id, uuid, path):
+    panel = PANELS_KOCHENG.get(panel_id)
     url = f"{panel['url']}/api/client/servers/{uuid}/files/contents?file={path}"
-    res = requests.get(url, headers=get_client_headers(panel_id))
+    res = requests.get(url, headers=get_client_headers_kocheng(panel_id))
     if res.status_code == 200:
         return res.content
     return None
     
+#== FUNGSI PTERODACTYL (SKYFORGIA)
+def get_ptero_user_skyforgia(email, panel_id):
+    panel = PANELS_SKYFORGIA.get(panel_id)
+    if not panel:
+        print(f"[ERROR] Panel {panel_id} tidak ditemukan")
+        return None
+
+    url = f"{panel['url']}/api/application/users?filter[email]={email}"
+    res = requests.get(url, headers=get_client_headers_skyforgia(panel_id)).json()
+    if "data" not in res or res["meta"]["pagination"]["total"] == 0:
+        return None
+    return res["data"][0]["attributes"]
+
+def get_servers_by_userid_skyforgia(user_id, panel_id):
+    panel = PANELS_SKYFORGIA.get(panel_id)
+    if not panel:
+        return []
+    url = f"{panel['url']}/api/application/users/{user_id}?include=servers"
+    res = requests.get(url, headers=get_client_headers_skyforgia(panel_id)).json()
+    if "relationships" not in res["attributes"]:
+        return []
+    return res["attributes"]["relationships"]["servers"]["data"]
+
+def list_files_skyforgia(panel_id, uuid, directory="/"):
+    panel = PANELS_SKYFORGIA.get(panel_id)
+    url = f"{panel['url']}/api/client/servers/{uuid}/files/list?directory={directory}"
+    res = requests.get(url, headers=get_client_headers_skyforgia(panel_id)).json()
+    return res
+
+def ptero_download_file_skyforgia(panel_id, uuid, path):
+    panel = PANELS_SKYFORGIA.get(panel_id)
+    url = f"{panel['url']}/api/client/servers/{uuid}/files/contents?file={path}"
+    res = requests.get(url, headers=get_client_headers_skyforgia(panel_id))
+    if res.status_code == 200:
+        return res.content
+    return None
+  
+# == BUILD ZIP FILE
 def build_zip_file_kocheng(panel_id, uuid, email):
     visited_paths = set()
     added_files = 0
@@ -279,7 +318,7 @@ def build_zip_file_kocheng(panel_id, uuid, email):
             return
         visited_paths.add(base_dir)
 
-        files = list_files(panel_id, uuid, base_dir)
+        files = list_files_kocheng(panel_id, uuid, base_dir)
 
         if not files or "data" not in files:
             print(f"[SKIP] Tidak bisa list file: {base_dir}")
@@ -300,7 +339,7 @@ def build_zip_file_kocheng(panel_id, uuid, email):
                 continue
 
             if is_file:
-                content = ptero_download_file(panel_id, uuid, rel_path)
+                content = ptero_download_file_kocheng(panel_id, uuid, rel_path)
                 if content:
                     zipf.writestr(rel_path.lstrip("/"), content)
                     added_files += 1
@@ -319,6 +358,65 @@ def build_zip_file_kocheng(panel_id, uuid, email):
     print(f"[OK] ZIP selesai: {added_files} file")
     return zip_path
     
+def build_zip_file_skyforgia(panel_id, uuid, email):
+    visited_paths = set()
+    added_files = 0
+
+    zip_path = f"/tmp/backup_{email}.zip"
+
+    if os.path.exists(zip_path):
+        os.remove(zip_path)
+
+    zipf = zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED)
+
+    def add_path(base_dir="/"):
+        nonlocal added_files
+
+        if base_dir in visited_paths:
+            return
+        visited_paths.add(base_dir)
+
+        files = list_files_skyforgia(panel_id, uuid, base_dir)
+
+        if not files or "data" not in files:
+            print(f"[SKIP] Tidak bisa list file: {base_dir}")
+            return
+
+        for f in files["data"]:
+            name = f["attributes"]["name"]
+            is_file = f["attributes"]["is_file"]
+            size = f["attributes"]["size"]
+
+            rel_path = os.path.join(base_dir, name).replace("//", "/")
+
+            if name in ("node_modules", ".", ".."):
+                continue
+
+            if is_file and size > 50 * 1024 * 1024:
+                print(f"[SKIP] File terlalu besar: {rel_path}")
+                continue
+
+            if is_file:
+                content = ptero_download_file_skyforgia(panel_id, uuid, rel_path)
+                if content:
+                    zipf.writestr(rel_path.lstrip("/"), content)
+                    added_files += 1
+                else:
+                    print(f"[SKIP] Gagal download: {rel_path}")
+            else:
+                add_path(rel_path)
+
+    add_path("/")
+    zipf.close()
+
+    if added_files == 0:
+        print("[FATAL] ZIP dibuat tapi isinya 0 FILE")
+        return None
+
+    print(f"[OK] ZIP selesai: {added_files} file")
+    return zip_path
+ 
+#== NOTIFIKASI
 def notify_heroku_backup_done_kocheng(email, filename, mega_link):
     try:
         requests.post(
@@ -332,17 +430,31 @@ def notify_heroku_backup_done_kocheng(email, filename, mega_link):
         )
     except Exception as e:
         print("Callback gagal:", str(e))
-       
         
+def notify_heroku_backup_done_skyforgia(email, filename, mega_link):
+    try:
+        requests.post(
+            "https://control.skyforgia.web.id/api/backup-finished",
+            json={
+                "email": email,
+                "filename": filename,
+                "mega_link": mega_link
+            },
+            timeout=10
+        )
+    except Exception as e:
+        print("Callback gagal:", str(e))
+       
+#== PROSES BACKUP
 def process_backup_kocheng(email, panel_id):
     zip_path = None
 
     try:
-        p_user = get_ptero_user(email, panel_id)
+        p_user = get_ptero_user_kocheng(email, panel_id)
         if not p_user:
             return
 
-        servers = get_servers_by_userid(p_user["id"], panel_id)
+        servers = get_servers_by_userid_kocheng(p_user["id"], panel_id)
         if not servers:
             return
 
@@ -369,6 +481,49 @@ def process_backup_kocheng(email, panel_id):
 
         # ✅ CALLBACK KE SERVER CONTROL
         notify_heroku_backup_done_kocheng(email, filename, mega_link)
+
+    except Exception as e:
+        print("Backup error:", str(e))
+
+    finally:
+        if zip_path and os.path.exists(zip_path):
+            os.remove(zip_path)
+            
+def process_backup_skyforgia(email, panel_id):
+    zip_path = None
+
+    try:
+        p_user = get_ptero_user_skyforgia(email, panel_id)
+        if not p_user:
+            return
+
+        servers = get_servers_by_userid_skyforgia(p_user["id"], panel_id)
+        if not servers:
+            return
+
+        uuid = servers[0]["attributes"]["uuid"]
+
+        zip_path = build_zip_file_skyforgia(panel_id, uuid, email)
+        filename = os.path.basename(zip_path)
+
+        with open(zip_path, "rb") as f:
+            files = {"file": (filename, f, "application/zip")}
+
+            r = requests.post(
+                f"{MEGA_API}/mega/skyforgia/upload",
+                files=files,
+                timeout=300
+            )
+
+            if r.status_code != 200:
+                print("Gagal upload ke MEGA:", r.text)
+                return
+
+            data = r.json()
+            mega_link = data.get("mega_link")
+
+        # ✅ CALLBACK KE SERVER CONTROL
+        notify_heroku_backup_done_skyforgia(email, filename, mega_link)
 
     except Exception as e:
         print("Backup error:", str(e))
