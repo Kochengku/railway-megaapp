@@ -313,23 +313,29 @@ def ptero_download_file_skyforgia(panel_id, uuid, path):
     
 def build_zip_file_kocheng(panel_id, uuid, email):
     visited_paths = set()
+    added_files = 0
 
     zip_path = f"/tmp/backup_{email}.zip"
 
-    # ✅ Pastikan tidak ada file lama
     if os.path.exists(zip_path):
         os.remove(zip_path)
 
     zipf = zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED)
 
     def add_path(base_dir="/"):
+        nonlocal added_files
+
         if base_dir in visited_paths:
             return
         visited_paths.add(base_dir)
 
         files = list_files_kocheng(panel_id, uuid, base_dir)
 
-        for f in files.get("data", []):
+        if not files or "data" not in files:
+            print(f"[SKIP] Tidak bisa list file: {base_dir}")
+            return
+
+        for f in files["data"]:
             name = f["attributes"]["name"]
             is_file = f["attributes"]["is_file"]
             size = f["attributes"]["size"]
@@ -339,20 +345,28 @@ def build_zip_file_kocheng(panel_id, uuid, email):
             if name in ("node_modules", ".", ".."):
                 continue
 
-            # ✅ Skip file besar
             if is_file and size > 50 * 1024 * 1024:
+                print(f"[SKIP] File terlalu besar: {rel_path}")
                 continue
 
             if is_file:
                 content = ptero_download_file_kocheng(panel_id, uuid, rel_path)
                 if content:
                     zipf.writestr(rel_path.lstrip("/"), content)
+                    added_files += 1
+                else:
+                    print(f"[SKIP] Gagal download: {rel_path}")
             else:
                 add_path(rel_path)
 
     add_path("/")
     zipf.close()
 
+    if added_files == 0:
+        print("[FATAL] ZIP dibuat tapi isinya 0 FILE")
+        return None
+
+    print(f"[OK] ZIP selesai: {added_files} file")
     return zip_path
     
 def build_zip_file_skyforgia(panel_id, uuid, email):
@@ -431,36 +445,53 @@ def process_backup_kocheng(email, panel_id):
     zip_path = None
 
     try:
+        print("[START] Backup:", email, panel_id)
+
         p_user = get_ptero_user_kocheng(email, panel_id)
+        print("[DEBUG] p_user:", p_user)
         if not p_user:
+            print("[STOP] p_user kosong")
             return
 
         servers = get_servers_by_userid_kocheng(p_user["id"], panel_id)
+        print("[DEBUG] servers:", servers)
         if not servers:
+            print("[STOP] servers kosong")
             return
 
         uuid = servers[0]["attributes"]["uuid"]
+        print("[DEBUG] uuid:", uuid)
 
         zip_path = build_zip_file_kocheng(panel_id, uuid, email)
+        print("[DEBUG] zip_path:", zip_path)
+
+        if not zip_path or not os.path.exists(zip_path):
+            print("[STOP] ZIP tidak terbentuk")
+            return
+
         filename = os.path.basename(zip_path)
 
         with open(zip_path, "rb") as f:
             files = {"file": (filename, f, "application/zip")}
 
+            print("[UPLOAD] ke MEGA...")
             r = requests.post(
                 f"{MEGA_API}/mega/kocheng/upload",
                 files=files,
                 timeout=300
             )
 
+            print("[MEGA] status:", r.status_code)
+            print("[MEGA] response:", r.text)
+
             if r.status_code != 200:
-                print("Gagal upload ke MEGA:", r.text)
+                print("Gagal upload ke MEGA")
                 return
 
             data = r.json()
             mega_link = data.get("mega_link")
 
-        # ✅ CALLBACK KE SERVER CONTROL
+        print("[CALLBACK] kirim ke control panel")
         notify_heroku_backup_done_kocheng(email, filename, mega_link)
 
     except Exception as e:
