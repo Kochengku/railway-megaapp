@@ -15,7 +15,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 MEGA_API = "https://unpleasant-christi-1kocheng-ea5544f0.koyeb.app"
 
 KOCHENG_API = "https://control.kocheng.biz.id/api/panels"
-SKYFORGIA_API = "https://control.skyforgia.web.id/api/panels"
+SKYFORGIA_API = "https://control.kocheng.biz.id/api/panels"
 
 HEADERS = {
     "X-CONTROL-KEY": "KUNCI_WEB_A"
