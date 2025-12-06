@@ -355,7 +355,7 @@ def process_backup_kocheng(email, panel_id):
             files = {"file": (filename, f, "application/zip")}
 
             r = requests.post(
-                f"{MEGA_API}/mega/skyforgia/upload",
+                f"{MEGA_API}/mega/kocheng/upload",
                 files=files,
                 timeout=300
             )
